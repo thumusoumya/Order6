@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Surprise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Caveat:wght@500;700&family=Manrope:wght@300;500;700&display=swap">
+
+<style>
+/* =========================================================
+   COLORS & FONTS  (change here to restyle everything)
+   ========================================================= */
+:root{
+  --night:#120c14;   /* background            */
+  --ink:#f6ece4;     /* main text             */
+  --gold:#f2c48d;    /* small labels, glow    */
+  --rose:#e88aa0;    /* accents, hearts       */
+  --muted:#a8939f;   /* hints                 */
+  --glass:rgba(255,255,255,.06);
+  --line:rgba(255,255,255,.16);
+  --display:"Italiana", Georgia, serif;          /* big titles   */
+  --hand:"Caveat", "Segoe Print", cursive;       /* handwriting  */
+  --body:"Manrope", Arial, sans-serif;           /* normal text  */
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--night);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+
+/* ---------- background effects ---------- */
+canvas.fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+#grain{opacity:.08;mix-blend-mode:overlay;z-index:30}
+#dust{z-index:3}
+#burst{z-index:31}
+.leak{position:fixed;inset:-20%;z-index:2;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(40% 35% at 15% 20%,rgba(242,196,141,.45),transparent 70%),
+             radial-gradient(35% 30% at 90% 85%,rgba(232,138,160,.35),transparent 70%);
+  animation:leak 10s ease-in-out infinite}
+@keyframes leak{0%,100%{opacity:.2;transform:translate(0,0)}50%{opacity:.6;transform:translate(4%,-3%)}}
+.vignette{position:fixed;inset:0;z-index:29;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(8,5,10,.85) 100%)}
+
+/* ---------- screens ---------- */
+.screen{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:24px 20px;
+  opacity:0;pointer-events:none;filter:blur(8px);transition:opacity 1.1s ease,filter 1.1s ease}
+.screen.on{opacity:1;pointer-events:auto;filter:none}
+.stack{display:grid;gap:18px;justify-items:center;text-align:center;max-width:560px;width:100%}
+.eyebrow{font-weight:300;letter-spacing:.45em;text-transform:uppercase;font-size:11px;color:var(--gold)}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;line-height:1}
+h1{font-size:clamp(52px,14vw,120px)}
+h2{font-size:clamp(34px,8vw,64px)}
+.hand{font-family:var(--hand);font-size:clamp(24px,5vw,34px);line-height:1.2;margin:0}
+.muted{color:var(--muted);font-size:13px;letter-spacing:.04em;margin:0}
+.btn{font:500 15px var(--body);letter-spacing:.06em;color:var(--night);background:linear-gradient(135deg,var(--gold),var(--rose));
+  border:0;border-radius:999px;padding:14px 30px;cursor:pointer;box-shadow:0 10px 30px rgba(232,138,160,.25)}
+.btn:focus-visible,.opt:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+/* ---------- password screen ---------- */
+.gift{width:90px;height:90px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--glass);
+  animation:float 3s ease-in-out infinite}
+.gift svg{width:40px;height:40px;stroke:var(--gold);fill:none;stroke-width:1.5}
+@keyframes float{50%{transform:translateY(-8px)}}
+#pw{width:min(300px,100%);background:var(--glass);border:1px solid var(--line);color:var(--ink);border-radius:14px;
+  padding:15px 18px;font:500 18px var(--body);letter-spacing:.25em;text-align:center}
+#pw::placeholder{letter-spacing:.05em;color:var(--muted)}
+#pwMsg{min-height:1.3em;font-family:var(--hand);font-size:24px;color:var(--rose);margin:0}
+.shake{animation:shake .5s}
+@keyframes shake{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+
+/* ---------- quiz ---------- */
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.opt{background:var(--glass);border:1px solid var(--line);color:var(--ink);border-radius:16px;padding:18px 12px;
+  font:500 15px var(--body);cursor:pointer;transition:transform .2s,background .3s,border-color .3s}
+.opt:hover{transform:translateY(-2px);border-color:var(--gold)}
+.opt.no{border-color:var(--rose);opacity:.4}
+.opt.yes{background:linear-gradient(135deg,rgba(242,196,141,.3),rgba(156,197,154,.3));border-color:var(--gold)}
+#qMsg{min-height:1.3em;margin:0;font-family:var(--hand);font-size:24px;color:var(--rose)}
+@media (max-width:380px){.opts{grid-template-columns:1fr}}
+
+/* ---------- photo film ---------- */
+#film{z-index:12}
+.scene{position:absolute;inset:0;display:grid;place-items:center;opacity:0}
+.scene .bg{position:absolute;inset:-8%;background-size:cover;background-position:center;filter:blur(38px) brightness(.45) saturate(1.2)}
+.frame{position:relative;margin:0;width:min(82vw,60vh);aspect-ratio:4/5;background:#fbf6ef;padding:3.2% 3.2% 15%;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);border-radius:2px}
+.frame .ph{width:100%;height:100%;overflow:hidden;background:#222}
+.frame img{width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.05) saturate(1.08) sepia(.08)}
+.frame figcaption{position:absolute;left:0;right:0;bottom:2.5%;text-align:center;font:700 clamp(20px,3.6vh,34px) var(--hand);color:#3a2830;padding:0 6%}
+.chap{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:14px;opacity:0;padding:24px}
+
+/* ---------- scratch card ---------- */
+.card{position:relative;width:min(340px,100%);aspect-ratio:4/3;border-radius:20px;overflow:hidden;
+  background:linear-gradient(135deg,#2a1a26,#1b1320);border:1px solid var(--line);display:grid;place-items:center;padding:22px}
+.card p{font-family:var(--hand);font-size:clamp(24px,6vw,30px);line-height:1.2;margin:0}
+.card canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+
+/* ---------- jigsaw ---------- */
+.jig{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:min(320px,82vw);aspect-ratio:4/5;padding:3px;background:#fbf6ef;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.tile{border:0;padding:0;cursor:pointer;background-repeat:no-repeat;transition:transform .25s,filter .25s;outline:3px solid transparent;outline-offset:-3px}
+.tile.sel{outline-color:var(--rose);transform:scale(.94);filter:brightness(1.15)}
+.jig.done{gap:0;transition:gap .8s}
+
+/* ---------- letter ---------- */
+.paper{max-width:min(560px,88vw);font-family:var(--hand);font-size:clamp(23px,3.4vh,32px);line-height:1.35}
+.paper span{opacity:0;filter:blur(6px);transition:opacity 1.4s,filter 1.4s}
+.paper span.in{opacity:1;filter:none}
+.paper .sign{display:block;text-align:right;color:var(--gold);margin-top:18px}
+
+/* ---------- music button ---------- */
+#music{position:fixed;z-index:40;right:14px;top:14px;width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--line);background:var(--glass);color:var(--ink);cursor:pointer;font-size:16px}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.leak,.gift{animation:none}}
+</style>
+</head>
+
+<body>
+<div class="leak"></div>
+<canvas id="dust" class="fx"></canvas>
+<div class="vignette"></div>
+<canvas id="grain" class="fx"></canvas>
+<canvas id="burst" class="fx"></canvas>
+<button id="music" hidden aria-label="Music on or off">♪</button>
+
+<!-- ================= PASSWORD SCREEN ================= -->
+<section class="screen on" id="sLock">
+  <form class="stack" id="lockForm" autocomplete="off">
+    <div class="gift">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="11.5" rx="1.5"/><path d="M2.5 9h19v-3h-19zM12 6v14.5"/><path d="M12 6c-1.5-3-5-3.5-5-1.2C7 6 9.5 6 12 6c2.5 0 5 0 5-1.2C17 2.5 13.5 3 12 6z"/></svg>
+    </div>
+    <div class="eyebrow" id="lockEyebrow"></div>
+    <h1>Surprise</h1>
+    <p class="muted" id="lockHint"></p>
+    <input id="pw" type="password" inputmode="numeric" placeholder="enter password" aria-label="Password">
+    <button class="btn" type="submit">Open</button>
+    <p id="pwMsg" aria-live="polite"></p>
+  </form>
+</section>
+
+<section class="screen" id="sMain"></section>
+<section class="screen" id="film"></section>
+
+<audio id="song" preload="auto" loop></audio>
+
+<script>
+/* =====================================================================
+   ✏️  EDIT EVERYTHING HERE
+   This file sits in the Order6 folder, next to the photos and the song.
+   File names must match EXACTLY (spaces and capital letters too).
+   ===================================================================== */
+const FILM = {
+  her:  "Bestie",                       // her name
+  from: "your best friend",             // how the letter is signed
+
+  password: "14112001",                 // her DOB. She can type 14112001 or 14/11/2001
+  hint: "Hint: your birthday (DDMMYYYY)",
+  lockEyebrow: "only for you",
+
+  song: "Order6.mpeg",                  // if there is no sound, rename the file to Order6.mp3 and change this too
+
+  intro: { eyebrow: "a little film made only for", line: "but first, let's see if you really are you" },
+
+  chapters: [
+    {
+      quiz: {
+        q: "Question one. What is your favourite food in the whole world?",
+        options: ["Paneer butter masala", "Lemon rice", "Pizza", "Maggi at 2am"],
+        answer: 1,                       // index of the right option (starts at 0)
+        right: "Lemon rice. Of course. Nobody loves lemon rice the way you do.",
+        wrong: ["Nope. You would never betray it like that.", "Wrong! Think yellow. Think tangy."],
+        confetti: "lemon"
+      },
+      title: "Chapter one",
+      sub: "the girl with the brightest smile",
+      photos: [
+        { src: "order6 image1.jpeg", caption: "that smile though" },
+        { src: "order6 image2.jpeg", caption: "main character energy" }
+      ]
+    },
+    {
+      quiz: {
+        q: "Question two. Where does your heart feel most at home?",
+        options: ["Shopping malls", "Beach parties", "Exploring nature", "My bed, all day"],
+        answer: 2,
+        right: "Exploring nature. Trees, hills, fresh air, and you at your happiest.",
+        wrong: ["Hmm, really? Think green.", "Not even close. Where do you go when you need peace?"],
+        confetti: "leaf"
+      },
+      title: "Chapter two",
+      sub: "wild, free and always wandering",
+      photos: [
+        { src: "order6 image3.jpeg", caption: "lost in the green" },
+        { src: "order6 image4.jpeg", caption: "where you feel most like you" }
+      ]
+    }
+  ],
+
+  scratch: {                            // surprise after chapter one
+    title: "A surprise is hiding here",
+    hint: "scratch the gold with your finger",
+    message: "You are the kind of friend people pray for. And somehow I got you."
+  },
+
+  jigsaw: {                             // photo puzzle before the finale
+    title: "Last puzzle",
+    hint: "tap two pieces to swap them and fix the picture",
+    photo: "order6 image1.jpeg",
+    reveal: "Just like this picture, life only makes sense when you're in it."
+  },
+
+  finale: {
+    title: "and finally",
+    sub: "you",
+    photos: [
+      { src: "order6 image5.jpeg", caption: "my favourite human" }
+    ]
+  },
+
+  letter: [
+    "Some people come into your life and quietly become home.",
+    "You were there on the loud days and on the silent ones.",
+    "You laugh at my worst jokes, and you never once let me feel alone.",
+    "Thank you for being you. Thank you for being my best friend."
+  ],
+
+  ending: { big: "Best friends", small: "forever, no matter what" },
+
+  timing: { photo: 5400, chapterTitle: 4200, letterLine: 4000 }   // milliseconds
+};
+/* ===================================================================== */
+
+
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const song = $("#song"), main = $("#sMain"), filmEl = $("#film");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+$("#lockHint").textContent = FILM.hint;
+$("#lockEyebrow").textContent = FILM.lockEyebrow;
+
+/* ---------- photos: preload, and show a soft placeholder if a file is missing ---------- */
+const ready = {};
+function placeholder(label){
+  const c = document.createElement("canvas"); c.width = 800; c.height = 1000; const g = c.getContext("2d");
+  const h = Math.random() * 360, gr = g.createLinearGradient(0, 0, 800, 1000);
+  gr.addColorStop(0, `hsl(${h} 55% 62%)`); gr.addColorStop(1, `hsl(${(h + 60) % 360} 45% 30%)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 800, 1000);
+  g.fillStyle = "rgba(255,255,255,.8)"; g.font = "300 34px Arial"; g.textAlign = "center"; g.fillText(label, 400, 520);
+  return c.toDataURL("image/jpeg", .8);
+}
+function preload(src){
+  if (ready[src]) return Promise.resolve(ready[src]);
+  return new Promise(res => {
+    const im = new Image();
+    im.onload  = () => res(ready[src] = encodeURI(src));
+    im.onerror = () => res(ready[src] = placeholder("missing: " + src));
+    im.src = encodeURI(src);
+  });
+}
+const allPhotos = [...FILM.chapters.flatMap(c => c.photos), ...FILM.finale.photos].map(p => p.src).concat(FILM.jigsaw.photo);
+const preloading = Promise.all(allPhotos.map(preload));
+
+/* ---------- password ---------- */
+const digits = s => s.replace(/\D/g, "");
+const fails = ["Hmm, that's not it.", "Nope. Think harder, bestie.", "Wrong again. Are you even you?", "It's a very special date..."];
+let tries = 0;
+
+$("#lockForm").onsubmit = async e => {
+  e.preventDefault();
+  const typed = $("#pw").value.trim();
+  const ok = typed === FILM.password || (digits(typed) && digits(typed) === digits(FILM.password));
+  if (!ok) {
+    $("#pwMsg").textContent = fails[tries++ % fails.length];
+    const f = $("#lockForm"); f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake");
+    return;
+  }
+  $("#pwMsg").textContent = "";
+  // music must start inside the tap (phone rule)
+  song.src = encodeURI(FILM.song); song.volume = 0;
+  song.play().then(() => fade(.9)).catch(() => {});
+  $("#music").hidden = false;
+  try { navigator.wakeLock?.request("screen").catch(() => {}); } catch (_) {}
+  burst("hearts");
+  $("#sLock").classList.remove("on");
+  await preloading; await sleep(900);
+  run();
+};
+
+function fade(to, ms = 2500){
+  const from = song.volume, st = performance.now();
+  (function f(){ const k = Math.min(1, (performance.now() - st) / ms); song.volume = from + (to - from) * k; if (k < 1) requestAnimationFrame(f); })();
+}
+$("#music").onclick = () => {
+  song.muted = !song.muted; $("#music").style.opacity = song.muted ? .4 : 1;
+  if (!song.muted && song.paused) song.play().catch(() => {});
+};
+
+/* ---------- screen helpers ---------- */
+function show(html){ main.classList.remove("on"); return sleep(700).then(() => { main.innerHTML = html; main.classList.add("on"); }); }
+function hide(){ main.classList.remove("on"); return sleep(1000); }
+const waitClick = el => new Promise(r => el.addEventListener("click", r, { once: true }));
+
+/* ---------- photo film ---------- */
+const moves = [
+  [{transform:"scale(1.08) rotate(-2deg) translateY(2%)"},{transform:"scale(1) rotate(-1deg)"}],
+  [{transform:"scale(.96) rotate(2deg) translateX(-2%)"},{transform:"scale(1.04) rotate(1deg) translateX(1%)"}],
+  [{transform:"scale(1.1) rotate(1deg)"},{transform:"scale(.98) rotate(-1.5deg)"}],
+  [{transform:"scale(.95) rotate(-1deg) translateY(-2%)"},{transform:"scale(1.05) rotate(1.5deg) translateY(1%)"}]
+];
+async function film(title, sub, photos){
+  filmEl.innerHTML = ""; filmEl.classList.add("on");
+  const items = [];
+  if (title) {
+    const c = document.createElement("div"); c.className = "chap";
+    c.innerHTML = `<div class="eyebrow">${esc(title)}</div><p class="hand">${esc(sub || "")}</p>`;
+    filmEl.appendChild(c); items.push([c, FILM.timing.chapterTitle, null]);
+  }
+  photos.forEach((p, i) => {
+    const s = ready[p.src] || p.src, d = document.createElement("div"); d.className = "scene";
+    d.innerHTML = `<div class="bg" style="background-image:url('${s}')"></div>
+      <figure class="frame"><div class="ph"><img alt="" src="${s}"></div><figcaption>${esc(p.caption || "")}</figcaption></figure>`;
+    filmEl.appendChild(d); items.push([d, FILM.timing.photo, i]);
+  });
+  let t = 0; const fadeMs = 1300;
+  items.forEach(([el, dur, mi]) => {
+    const o = { duration: dur + fadeMs, delay: t, fill: "both" };
+    el.animate([{opacity:0,filter:"blur(10px)"},{opacity:1,filter:"blur(0)",offset:fadeMs/(dur+fadeMs)},
+                {opacity:1,filter:"blur(0)",offset:dur/(dur+fadeMs)},{opacity:0,filter:"blur(8px)"}], o);
+    if (mi !== null) {
+      el.querySelector(".frame").animate(moves[mi % 4], { ...o, easing: "ease-in-out" });
+      el.querySelector("img").animate([{transform:"scale(1.18)"},{transform:"scale(1.02)"}], o);
+      el.querySelector(".bg").animate([{transform:"scale(1.2)"},{transform:"scale(1)"}], o);
+    } else el.animate([{transform:"scale(1.06)"},{transform:"scale(1)"}], o);
+    t += dur;
+  });
+  await sleep(t + fadeMs); filmEl.classList.remove("on"); await sleep(800); filmEl.innerHTML = "";
+}
+
+/* ---------- quiz ---------- */
+function quiz(q, n){
+  return new Promise(async res => {
+    await show(`<div class="stack"><div class="eyebrow">puzzle ${n}</div><p class="hand">${esc(q.q)}</p>
+      <div class="opts">${q.options.map((o, i) => `<button class="opt" data-i="${i}">${esc(o)}</button>`).join("")}</div>
+      <p id="qMsg" aria-live="polite"></p></div>`);
+    let w = 0;
+    main.querySelectorAll(".opt").forEach(b => b.onclick = async () => {
+      if (+b.dataset.i !== q.answer) { b.classList.add("no"); b.disabled = true; $("#qMsg").textContent = q.wrong[w++ % q.wrong.length]; return; }
+      b.classList.add("yes"); main.querySelectorAll(".opt").forEach(x => x.disabled = true); $("#qMsg").textContent = "";
+      burst(q.confetti || "hearts"); await sleep(1200);
+      await show(`<div class="stack"><div class="eyebrow">correct ♡</div><p class="hand">${esc(q.right)}</p>
+        <p class="muted">a memory just unlocked</p><button class="btn" id="go">Watch it</button></div>`);
+      await waitClick($("#go")); await hide(); res();
+    });
+  });
+}
+
+/* ---------- scratch card ---------- */
+async function scratch(s){
+  await show(`<div class="stack"><div class="eyebrow">surprise</div><h2>${esc(s.title)}</h2>
+    <div class="card"><p>${esc(s.message)}</p><canvas></canvas></div><p class="muted">${esc(s.hint)}</p>
+    <button class="btn" id="go" hidden>Keep going</button></div>`);
+  const cv = main.querySelector(".card canvas"), r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = r.width * dpr; cv.height = r.height * dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  const gr = g.createLinearGradient(0, 0, r.width, r.height);
+  ["#b8894d","#f2d59b","#c9975a","#f7e2b4","#a87a42"].forEach((c, i, a) => gr.addColorStop(i / (a.length - 1), c));
+  g.fillStyle = gr; g.fillRect(0, 0, r.width, r.height);
+  for (let i = 0; i < 500; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * .25})`; g.fillRect(Math.random() * r.width, Math.random() * r.height, 1.5, 1.5); }
+  g.fillStyle = "rgba(80,50,20,.75)"; g.font = "700 30px Caveat, cursive"; g.textAlign = "center"; g.fillText("scratch me ♡", r.width / 2, r.height / 2 + 10);
+  g.globalCompositeOperation = "destination-out"; g.lineCap = g.lineJoin = "round"; g.lineWidth = 46;
+  let down = false, last = null, done = false;
+  const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  cv.onpointerdown = e => { down = true; last = pt(e); cv.setPointerCapture(e.pointerId); };
+  cv.onpointerup = cv.onpointercancel = () => { down = false; check(); };
+  cv.onpointermove = e => { if (!down) return; const p = pt(e); g.beginPath(); g.moveTo(...last); g.lineTo(...p); g.stroke(); last = p; };
+  function check(){
+    if (done) return;
+    const d = g.getImageData(0, 0, cv.width, cv.height).data; let c = 0, n = 0;
+    for (let i = 3; i < d.length; i += 64) { n++; if (d[i] === 0) c++; }
+    if (c / n > .5) { done = true; cv.style.transition = "opacity 1s"; cv.style.opacity = 0; burst("hearts"); $("#go").hidden = false; }
+  }
+  await waitClick($("#go")); await hide();
+}
+
+/* ---------- jigsaw ---------- */
+async function jigsaw(j){
+  const src = ready[j.photo] || j.photo;
+  await show(`<div class="stack"><div class="eyebrow">${esc(j.title)}</div><div class="jig" id="jig"></div>
+    <p class="muted" id="jMsg">${esc(j.hint)}</p></div>`);
+  const box = $("#jig"); let order = [...Array(9).keys()], sel = null;
+  do { order.sort(() => Math.random() - .5); } while (order.every((v, i) => v === i));
+  let resolve; const finished = new Promise(r => resolve = r);
+  function draw(){
+    box.innerHTML = "";
+    order.forEach((piece, pos) => {
+      const b = document.createElement("button"); b.className = "tile"; b.setAttribute("aria-label", "piece " + (pos + 1));
+      b.style.backgroundImage = `url('${src}')`; b.style.backgroundSize = "300% 300%";
+      b.style.backgroundPosition = `${(piece % 3) * 50}% ${Math.floor(piece / 3) * 50}%`;
+      if (sel === pos) b.classList.add("sel");
+      b.onclick = () => {
+        if (sel === null) { sel = pos; draw(); return; }
+        [order[sel], order[pos]] = [order[pos], order[sel]]; sel = null; draw();
+        if (order.every((v, i) => v === i)) win();
+      };
+      box.appendChild(b);
+    });
+  }
+  async function win(){
+    box.classList.add("done"); box.querySelectorAll("button").forEach(b => b.disabled = true); burst("hearts");
+    $("#jMsg").outerHTML = `<p class="hand">${esc(j.reveal)}</p><button class="btn" id="go">One last thing</button>`;
+    await waitClick($("#go")); resolve();
+  }
+  draw(); await finished; await hide();
+}
+
+/* ---------- letter + ending ---------- */
+async function letter(){
+  await show(`<div class="paper">${FILM.letter.map(s => `<span>${esc(s)} </span>`).join("<br><br>")}<span class="sign">— ${esc(FILM.from)}</span></div>`);
+  for (const s of main.querySelectorAll(".paper span")) { await sleep(400); s.classList.add("in"); await sleep(FILM.timing.letterLine - 400); }
+  await sleep(2500); await hide();
+}
+async function ending(){
+  await show(`<div class="stack"><h1>${esc(FILM.ending.big)}</h1><p class="hand">${esc(FILM.ending.small)}</p>
+    <div class="eyebrow" style="margin-top:10px">for ${esc(FILM.her)}, with all my heart</div>
+    <button class="btn" id="again" style="margin-top:22px">Watch again</button></div>`);
+  burst("hearts"); setTimeout(() => burst("hearts"), 1500);
+  setTimeout(() => fade(.25, 6000), 4000);
+  await waitClick($("#again")); song.currentTime = 0; fade(.9); await hide(); run(true);
+}
+
+/* ---------- the journey (order of everything) ---------- */
+async function run(again){
+  await show(`<div class="stack"><div class="eyebrow">${esc(FILM.intro.eyebrow)}</div><h1>${esc(FILM.her)}</h1><p class="hand">${esc(FILM.intro.line)}</p></div>`);
+  await sleep(5200); await hide();
+  for (let i = 0; i < FILM.chapters.length; i++) {
+    const c = FILM.chapters[i];
+    if (!again) await quiz(c.quiz, i + 1);          // puzzles only the first time
+    await film(c.title, c.sub, c.photos);
+    if (i === 0 && !again) await scratch(FILM.scratch);
+  }
+  if (!again) await jigsaw(FILM.jigsaw);
+  await film(FILM.finale.title, FILM.finale.sub, FILM.finale.photos);
+  await letter();
+  await ending();
+}
+
+/* ---------- background: golden dust, film grain, confetti ---------- */
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const dust = $("#dust"), dg = dust.getContext("2d"), grain = $("#grain"), gg = grain.getContext("2d"), bc = $("#burst"), bg = bc.getContext("2d");
+let W, H, DPR = Math.min(2, devicePixelRatio || 1), P = [], B = [];
+function size(){
+  W = innerWidth; H = innerHeight;
+  [dust, bc].forEach(c => { c.width = W * DPR; c.height = H * DPR; c.getContext("2d").setTransform(DPR, 0, 0, DPR, 0, 0); });
+  grain.width = W / 2; grain.height = H / 2;
+  P = Array.from({ length: Math.round(W * H / 14000) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: .4 + Math.random() * 2.2,
+    v: .1 + Math.random() * .35, a: Math.random() * 6.28, h: Math.random() < .7 ? "242,196,141" : "232,138,160" }));
+}
+size(); addEventListener("resize", size);
+function heart(g, x, y, s){
+  g.beginPath(); g.moveTo(x, y + s * .3);
+  g.bezierCurveTo(x, y, x - s * .5, y, x - s * .5, y + s * .3); g.bezierCurveTo(x - s * .5, y + s * .6, x, y + s * .8, x, y + s);
+  g.bezierCurveTo(x, y + s * .8, x + s * .5, y + s * .6, x + s * .5, y + s * .3); g.bezierCurveTo(x + s * .5, y, x, y, x, y + s * .3); g.fill();
+}
+function burst(kind){
+  const cols = { hearts:["#e88aa0","#f2c48d","#f6ece4","#c2506c"], lemon:["#f3dc6b","#fff3a8","#9cc59a","#f2c48d"], leaf:["#9cc59a","#5f9a6a","#c8e3a8","#f2c48d"] }[kind] || ["#e88aa0","#f2c48d","#f6ece4","#c2506c"];
+  for (let i = 0; i < 70; i++) B.push({ x: W / 2, y: H * .55, vx: (Math.random() - .5) * 12, vy: -Math.random() * 13 - 3,
+    s: 8 + Math.random() * 12, c: cols[i % 4], r: Math.random() * 6, vr: (Math.random() - .5) * .2, k: kind, life: 1 });
+}
+function fx(){
+  dg.clearRect(0, 0, W, H);
+  P.forEach(p => { p.y -= p.v; p.a += .01; p.x += Math.sin(p.a) * .3; if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; }
+    dg.fillStyle = `rgba(${p.h},${.35 + .35 * Math.sin(p.a * 3)})`; dg.beginPath(); dg.arc(p.x, p.y, p.r, 0, 7); dg.fill(); });
+  bg.clearRect(0, 0, W, H);
+  B = B.filter(b => b.life > 0);
+  B.forEach(b => { b.vy += .28; b.vx *= .99; b.x += b.vx; b.y += b.vy; b.r += b.vr; b.life -= .008;
+    bg.save(); bg.globalAlpha = Math.max(0, b.life); bg.translate(b.x, b.y); bg.rotate(b.r); bg.fillStyle = b.c;
+    if (b.k === "leaf") { bg.beginPath(); bg.ellipse(0, 0, b.s * .35, b.s * .75, 0, 0, 7); bg.fill(); }
+    else if (b.k === "lemon") { bg.beginPath(); bg.arc(0, 0, b.s * .45, 0, 7); bg.fill(); bg.fillStyle = "rgba(255,255,255,.5)"; bg.beginPath(); bg.arc(0, 0, b.s * .25, 0, 7); bg.fill(); }
+    else heart(bg, 0, -b.s / 2, b.s);
+    bg.restore(); });
+  const id = gg.createImageData(grain.width, grain.height), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+  gg.putImageData(id, 0, 0);
+  requestAnimationFrame(fx);
+}
+if (!reduce) fx();
+</script>
+</body>
+</html>
