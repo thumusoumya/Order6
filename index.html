@@ -230,7 +230,7 @@ h2{font-size:clamp(34px,8vw,60px)}
 <section class="screen" id="sMain"></section>
 
 <audio id="song" preload="auto" loop></audio>
-
+<script src="crypto.js"></script>
 <script>
 /* =====================================================================
    ✏️  EDIT EVERYTHING HERE
@@ -341,16 +341,17 @@ function placeholder(label){
   g.fillStyle = "rgba(255,255,255,.8)"; g.font = "300 30px Arial"; g.textAlign = "center"; g.fillText(label, 400, 520);
   return c.toDataURL("image/jpeg", .8);
 }
-function preload(src){
+/* "order6 image1.jpeg"  ->  "enc/order6 image1.bin" */
+const encPath = src => "enc/" + src.replace(/\.jpe?g$/i, ".bin");
+
+/* fetch the encrypted .bin, decrypt it, and hand back a blob: URL usable in <img> / background-image */
+function preload(src, password){
   if (ready[src]) return Promise.resolve(ready[src]);
-  return new Promise(res => {
-    const im = new Image();
-    im.onload  = () => res(ready[src] = encodeURI(src));
-    im.onerror = () => res(ready[src] = placeholder("missing: " + src));
-    im.src = encodeURI(src);
-  });
+  return decryptFile(password, encodeURI(encPath(src)))
+    .then(buf => ready[src] = URL.createObjectURL(new Blob([buf], { type: "image/jpeg" })))
+    .catch(() => ready[src] = placeholder("missing: " + src));
 }
-const preloading = Promise.all(FILM.photos.map(p => p.src).concat(FILM.jigsaw.photo).map(preload));
+const preloadAll = password => Promise.all([...new Set(FILM.photos.map(p => p.src).concat(FILM.jigsaw.photo))].map(s => preload(s, password)));
 
 /* ---------- helpers ---------- */
 function show(html){ main.classList.remove("on"); return sleep(700).then(() => { main.innerHTML = html; main.classList.add("on"); }); }
@@ -408,7 +409,7 @@ $("#lockForm").onsubmit = async e => {
   try { navigator.wakeLock?.request("screen").catch(() => {}); } catch (_) {}
   burst("hearts", innerWidth / 2, innerHeight * .5);
   $("#sLock").classList.remove("on");
-  await preloading; await sleep(900);
+  await preloadAll(FILM.password); await sleep(900);
   run();
 };
 
